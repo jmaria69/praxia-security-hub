@@ -1,5 +1,28 @@
 # Changelog — Praxia Security Hub
 
+## [1.1.0] - 2026-11-24
+
+### Added
+- **MCP Server Integration (`scripts/praxia-mcp`, `backend/mcp/server.py`):**
+  - Standard JSON-RPC stdio protocol compatible with Claude Code, Cursor, Codex, OpenCode and Gemini CLI.
+  - Exposes `praxia_status`, `praxia_list_projects`, `praxia_inspect_project`, `praxia_scan_prompt`, `praxia_audit_artifacts`, and `praxia_get_audit_events`.
+- **Complete CLI Operations (`scripts/praxia-security`):**
+  - `praxia-security audit <project_id>`: Query incidents and audit trail.
+  - `praxia-security protection dry-run <project_id>`: Pre-flight REA simulation without filesystem changes.
+  - `praxia-security protection harden <project_id> --confirm`: Safe isolated snapshot copy, BLA protect, equivalence verification, and cryptographic manifest generation.
+  - `praxia-security reports generate`: Markdown/JSON global compliance and security reports.
+- **CI/CD Hardening Action & Pipeline (`.github/`):**
+  - Composite GitHub Action `.github/actions/praxia-secure-publish/action.yml`.
+  - Reusable workflow `.github/workflows/praxia-pipeline.yml` enforcing secret scanning, privacy checks, BLA hardening, and manifest generation.
+- **Enterprise Security Policies (`policies/`):**
+  - `policies/data_classification.yaml` and `policies/fail_closed_rules.yaml`.
+- **Integrations Documentation & Configs (`integrations/`):**
+  - Setups for Claude Code, Codex, OpenCode, Gemini, Headroom, and OmniRoute.
+- **Docker Deployment:**
+  - `docker/Dockerfile.backend` with Python 3.10 and Node.js 20 LTS for BLA execution.
+- **Unit & Integration Tests:**
+  - Expanded test suite from 15 to 28 tests (100% passing).
+
 ## [1.0.0] - 2026-11-24
 
 ### Added

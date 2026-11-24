@@ -5,7 +5,7 @@ root_path: "/home/jmari/proyectosIA/AdminApp"
 technology:
   frontend: "Next.js / React"
   backend: "Flask / Python"
-  build_output: "dist"
+  build_output: ".next/static"
 protection:
   enabled: true
   engine: "bla"

@@ -1,0 +1,36 @@
+# Praxia Labs — Fail-Closed Security Rules
+# Any trigger immediately halts upstream transmission and raises a critical security incident.
+
+rules:
+  - id: "RULE_SECRET_API_KEYS"
+    name: "API Keys and Cloud Credentials"
+    severity: "CRITICAL"
+    action: "BLOCK_AND_LOG"
+    patterns:
+      - "sk-[a-zA-Z0-9_-]{20,}"
+      - "sk-ant-api[a-zA-Z0-9_-]{20,}"
+      - "AKIA[0-9A-Z]{16}"
+      - "ghp_[a-zA-Z0-9]{36}"
+      - "AIza[0-9A-Za-z\\-_]{35}"
+
+  - id: "RULE_HIGH_ENTROPY"
+    name: "High Shannon Entropy String"
+    severity: "HIGH"
+    threshold: 4.5
+    action: "BLOCK_AND_LOG"
+
+  - id: "RULE_PRIVATE_KEYS"
+    name: "Private Cryptographic Keys and Certificates"
+    severity: "CRITICAL"
+    action: "BLOCK_AND_LOG"
+    patterns:
+      - "-----BEGIN RSA PRIVATE KEY-----"
+      - "-----BEGIN OPENSSH PRIVATE KEY-----"
+      - "-----BEGIN EC PRIVATE KEY-----"
+      - "-----BEGIN PRIVATE KEY-----"
+
+  - id: "RULE_RESTRICTED_HEALTH_DATA"
+    name: "Unmasked Clinical or Health Identifiers"
+    severity: "CRITICAL"
+    projects: ["saludos"]
+    action: "BLOCK_AND_LOG"

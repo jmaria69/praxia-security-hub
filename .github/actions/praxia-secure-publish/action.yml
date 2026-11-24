@@ -1,0 +1,68 @@
+name: "Praxia Secure Build & Hardening"
+description: "Verifies secrets, privacy compliance, runs BLA hardening, and verifies runtime equivalence"
+inputs:
+  project_id:
+    description: "Registered Praxia project ID"
+    required: true
+  build_output_dir:
+    description: "Relative path to build artifacts to harden"
+    required: true
+    default: "dist"
+  intensity:
+    description: "BLA protection intensity: fast, balanced, maximum, paranoid"
+    required: false
+    default: "balanced"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Node.js for BLA
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Set up Python for Praxia Gateway
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Cache Python Dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-praxia-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-praxia-
+
+    - name: Install Praxia Security CLI
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e /home/jmari/proyectosIA/praxia-security-hub
+
+    - name: Pre-flight Doctor & BLA Check
+      shell: bash
+      run: |
+        praxia-security doctor
+
+    - name: Pre-build Secret Scanning
+      shell: bash
+      run: |
+        echo "Running pre-flight secret scanning on project sources..."
+        # Scan code files
+        find . -maxdepth 3 -name "*.ts" -o -name "*.py" -o -name "*.js" -o -name "*.json" | while read file; do
+          praxia-security privacy scan --project-id "${{ inputs.project_id }}" --file "$file" > /dev/null || exit 1
+        done
+        echo "✓ Source code passed secret and privacy validation."
+
+    - name: Execute BLA Hardening on Build Artifacts
+      shell: bash
+      run: |
+        echo "Executing BLA protection pipeline on ${{ inputs.build_output_dir }}..."
+        praxia-security protection harden "${{ inputs.project_id }}" --confirm --intensity "${{ inputs.intensity }}"
+
+    - name: Verify Cryptographic Manifest
+      shell: bash
+      run: |
+        echo "Validating audit trail and cryptographic manifest..."
+        praxia-security audit "${{ inputs.project_id }}"

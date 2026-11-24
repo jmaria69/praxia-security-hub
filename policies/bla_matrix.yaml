@@ -1,0 +1,38 @@
+# Praxia Security Hub — BLA Protection Matrix
+
+matrix:
+  crm-it:
+    intensity: "balanced"
+    verification_required: true
+    allow_in_place: false
+    backup_retention_days: 90
+
+  radar-ai:
+    intensity: "balanced"
+    verification_required: true
+    allow_in_place: false
+    backup_retention_days: 90
+
+  saludos:
+    intensity: "bankrupt"
+    verification_required: true
+    allow_in_place: false
+    backup_retention_days: 180
+
+  ageverify:
+    intensity: "bankrupt"
+    verification_required: true
+    allow_in_place: false
+    backup_retention_days: 180
+
+  siam:
+    intensity: "maximum"
+    verification_required: true
+    allow_in_place: false
+    backup_retention_days: 180
+
+  adminapp:
+    intensity: "balanced"
+    verification_required: true
+    allow_in_place: false
+    backup_retention_days: 90

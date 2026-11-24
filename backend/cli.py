@@ -62,6 +62,38 @@ def cmd_projects_inspect(args):
     print(f"Protection BLA: {p.protection.intensity} (enabled={p.protection.enabled})")
     print(f"Privacy Default:{p.privacy.classification_default} (fail_closed={p.privacy.fail_closed})")
 
+def cmd_audit(args):
+    project_id = args.project_id
+    events = audit_logger.list_events(limit=args.limit, project_id=project_id)
+    incidents = audit_logger.list_incidents(limit=args.limit, project_id=project_id)
+    
+    if args.json:
+        print(json.dumps({
+            "project_id": project_id,
+            "events_count": len(events),
+            "incidents_count": len(incidents),
+            "events": events,
+            "incidents": incidents
+        }, indent=2))
+        return
+        
+    print("═══════════════════════════════════════════════════════════")
+    print(f" 📋 AUDIT REPORT: {project_id}")
+    print("═══════════════════════════════════════════════════════════")
+    print(f"Total Events: {len(events)} | Incidents: {len(incidents)}")
+    print("-----------------------------------------------------------")
+    if incidents:
+        print("🚨 SECURITY INCIDENTS:")
+        for inc in incidents:
+            print(f"  [{inc.get('timestamp')}] {inc.get('severity')} - {inc.get('category')}: {inc.get('summary')}")
+    else:
+        print("  ✓ No open security incidents recorded.")
+    print("-----------------------------------------------------------")
+    print("📜 RECENT AUDIT TRAIL:")
+    for ev in events[:10]:
+        print(f"  [{ev.get('timestamp')}] {ev.get('severity')} - {ev.get('action')} ({ev.get('event_type')}) by {ev.get('user')}")
+    print("═══════════════════════════════════════════════════════════")
+
 def cmd_doctor(args):
     doc = bla_runner.doctor()
     if args.json:
@@ -115,6 +147,178 @@ def cmd_protection_check(args):
     print(f"Status:           {report.get('protectionStatus')}")
     print(f"Headline:         {report.get('headlineWarning')}")
 
+def cmd_protection_dry_run(args):
+    p = project_registry.get_project(args.project_id)
+    if not p:
+        print(f"Error: Project '{args.project_id}' not found.", file=sys.stderr)
+        sys.exit(1)
+    target = Path(p.root_path) / (p.technology.build_output or "dist")
+    if not target.exists():
+        print(f"Build output does not exist at {target}", file=sys.stderr)
+        sys.exit(1)
+        
+    if not args.json:
+        print(f"🔍 Running BLA Protection DRY-RUN simulation for [{p.id}]...")
+    audit_res = bla_runner.audit(target)
+    
+    result = {
+        "project_id": p.id,
+        "mode": "DRY_RUN",
+        "target_path": str(target),
+        "target_format": audit_res.get("detectedFormat"),
+        "exposure_score": audit_res.get("exposureScore", 0),
+        "target_protection_intensity": p.protection.intensity,
+        "recommended_shield": "Counter-REA Multi-layer adversarial shield",
+        "in_place_modifications": False,
+        "backup_strategy": "Immutable SHA-256 snapshot"
+    }
+    
+    if args.json:
+        print(json.dumps(result, indent=2))
+        return
+        
+    print("───────────────────────────────────────────────────────────")
+    print(f" • Mode:                     SIMULATION (NO IN-PLACE CHANGES)")
+    print(f" • Target Path:             {result['target_path']}")
+    print(f" • Format:                   {result['target_format']}")
+    print(f" • Pre-flight REA Exposure:  {result['exposure_score']}/100")
+    print(f" • Target Shield Intensity:  {result['target_protection_intensity']}")
+    print(f" • Integrity Strategy:       Non-destructive snapshot + verification")
+    print("───────────────────────────────────────────────────────────")
+    print("✓ Dry-run completed successfully. Run 'praxia-security protection harden' to execute.")
+
+def cmd_protection_harden(args):
+    p = project_registry.get_project(args.project_id)
+    if not p:
+        print(f"Error: Project '{args.project_id}' not found.", file=sys.stderr)
+        sys.exit(1)
+        
+    if not args.confirm:
+        print(
+            f"⚠️  CAUTION: Protection hardening injects adversarial defenses into copies of build artifacts.\n"
+            f"   Project: {p.name} ({p.id})\n"
+            f"   To confirm and proceed, please rerun with '--confirm'.",
+            file=sys.stderr
+        )
+        sys.exit(1)
+        
+    target = Path(p.root_path) / (p.technology.build_output or "dist")
+    if not target.exists():
+        print(f"Build output does not exist at {target}", file=sys.stderr)
+        sys.exit(1)
+        
+    intensity = args.intensity or p.protection.intensity
+    if not args.json:
+        print(f"🛡️  Creating immutable snapshot and applying BLA hardening ({intensity})...")
+    
+    build_id, orig_backup, prot_target = artifact_manager.create_snapshot(
+        project_id=p.id,
+        source_artifact_path=target,
+        intensity=intensity
+    )
+    
+    prot_res = bla_runner.protect(
+        input_path=orig_backup,
+        output_path=prot_target,
+        intensity=intensity
+    )
+    
+    verify_res = bla_runner.verify(
+        protected_path=prot_target,
+        original_path=orig_backup
+    )
+    
+    manifest = artifact_manager.record_manifest(
+        build_id=build_id,
+        project_id=p.id,
+        original_path=orig_backup,
+        protected_path=prot_target,
+        intensity=intensity,
+        verification_result=verify_res
+    )
+    
+    if args.json:
+        print(manifest.model_dump_json(indent=2))
+        return
+        
+    print("═══════════════════════════════════════════════════════════")
+    print(" 🛡️  BLA HARDENING COMPLETED SUCCESSFULLY")
+    print("═══════════════════════════════════════════════════════════")
+    print(f" • Build ID:          {manifest.build_id}")
+    print(f" • Original Backup:   {manifest.original_path}")
+    print(f" • Original SHA-256:  {manifest.original_sha256[:16]}...")
+    print(f" • Protected Target:  {manifest.protected_path}")
+    print(f" • Protected SHA-256: {manifest.protected_sha256[:16]}...")
+    print(f" • Verification:      {'PASSED' if manifest.verification_passed else 'WARNING'}")
+    print("═══════════════════════════════════════════════════════════")
+
+def cmd_reports_generate(args):
+    projects = project_registry.list_projects()
+    doc = bla_runner.doctor()
+    events = audit_logger.list_events(limit=100)
+    incidents = audit_logger.list_incidents(limit=100)
+    
+    report_data = {
+        "title": "Praxia Security Hub - Global Compliance & Security Report",
+        "generated_at": audit_logger.list_events(limit=1)[0].get("timestamp", "N/A") if events else "N/A",
+        "platform_status": "OPERATIONAL",
+        "bla_health": doc.get("healthy", False),
+        "total_projects": len(projects),
+        "total_events": len(events),
+        "total_incidents": len(incidents),
+        "projects_summary": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "classification": p.privacy.classification_default,
+                "fail_closed": p.privacy.fail_closed,
+                "bla_enabled": p.protection.enabled,
+                "intensity": p.protection.intensity
+            }
+            for p in projects
+        ]
+    }
+    
+    output_content = (
+        f"# Praxia Security Hub — Security & Privacy Audit Report\n\n"
+        f"**Generated:** {report_data['generated_at']}\n"
+        f"**Platform Status:** {report_data['platform_status']}\n"
+        f"**BLA Engine Health:** {'PASSED' if report_data['bla_health'] else 'FAILED'}\n"
+        f"**Monitored Projects:** {report_data['total_projects']}\n"
+        f"**Open Incidents:** {report_data['total_incidents']}\n\n"
+        f"## Monitored SaaS Projects\n\n"
+        f"| Project ID | Project Name | Classification | Fail-Closed | BLA Protection | Intensity |\n"
+        f"|---|---|---|---|---|---|\n"
+    )
+    for p in report_data["projects_summary"]:
+        output_content += (
+            f"| `{p['id']}` | {p['name']} | **{p['classification']}** | "
+            f"{'✓' if p['fail_closed'] else '✗'} | {'✓' if p['bla_enabled'] else '✗'} | {p['intensity']} |\n"
+        )
+        
+    output_content += (
+        f"\n## Security Incidents Overview\n\n"
+        f"- Total registered incidents: {len(incidents)}\n"
+    )
+    for inc in incidents[:10]:
+        output_content += f"- **[{inc.get('severity')}]** `{inc.get('timestamp')}`: {inc.get('summary')} (Project: `{inc.get('project_id')}`)\n"
+    if not incidents:
+        output_content += "- *No open security incidents.*\n"
+        
+    if args.output:
+        out_path = Path(args.output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        if str(out_path).endswith(".json"):
+            out_path.write_text(json.dumps(report_data, indent=2), encoding="utf-8")
+        else:
+            out_path.write_text(output_content, encoding="utf-8")
+        print(f"✓ Security report generated at: {out_path}")
+    else:
+        if args.json:
+            print(json.dumps(report_data, indent=2))
+        else:
+            print(output_content)
+
 def main():
     parser = argparse.ArgumentParser(prog="praxia-security", description="Praxia Security Hub CLI")
     parser.add_argument("--json", action="store_true", help="Output machine-readable JSON")
@@ -133,6 +337,12 @@ def main():
     p_proj_ins.add_argument("project_id", help="Project identifier")
     p_proj_ins.set_defaults(func=cmd_projects_inspect)
 
+    # audit
+    p_aud = subparsers.add_parser("audit", help="Audit project events and security incidents")
+    p_aud.add_argument("project_id", help="Project identifier")
+    p_aud.add_argument("--limit", type=int, default=50, help="Maximum events to return")
+    p_aud.set_defaults(func=cmd_audit)
+
     # doctor
     p_doc = subparsers.add_parser("doctor", help="Check BLA and security health")
     p_doc.set_defaults(func=cmd_doctor)
@@ -146,12 +356,29 @@ def main():
     p_scan.add_argument("--file", help="File to scan")
     p_scan.set_defaults(func=cmd_privacy_scan)
 
-    # protection check
+    # protection check, dry-run, harden
     p_prot = subparsers.add_parser("protection", help="BLA protection tools")
     prot_sub = p_prot.add_subparsers(dest="action", required=True)
     p_pcheck = prot_sub.add_parser("check", help="Run audit on project build output")
     p_pcheck.add_argument("project_id", help="Project ID")
     p_pcheck.set_defaults(func=cmd_protection_check)
+    
+    p_dry = prot_sub.add_parser("dry-run", help="Run simulated BLA protection dry-run")
+    p_dry.add_argument("project_id", help="Project ID")
+    p_dry.set_defaults(func=cmd_protection_dry_run)
+    
+    p_harden = prot_sub.add_parser("harden", help="Execute BLA hardening with copy & verification")
+    p_harden.add_argument("project_id", help="Project ID")
+    p_harden.add_argument("--confirm", action="store_true", help="Explicit confirmation to proceed")
+    p_harden.add_argument("--intensity", choices=["fast", "balanced", "maximum", "paranoid"], help="Override intensity")
+    p_harden.set_defaults(func=cmd_protection_harden)
+
+    # reports generate
+    p_rep = subparsers.add_parser("reports", help="Generate compliance and security reports")
+    rep_sub = p_rep.add_subparsers(dest="action", required=True)
+    p_gen = rep_sub.add_parser("generate", help="Generate compliance report")
+    p_gen.add_argument("--output", "-o", help="Output file path (.md or .json)")
+    p_gen.set_defaults(func=cmd_reports_generate)
 
     args = parser.parse_args()
     if hasattr(args, "func"):

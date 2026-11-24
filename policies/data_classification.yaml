@@ -1,0 +1,34 @@
+# Praxia Labs — Enterprise Data Classification Matrix
+# Governs data handling across SaaS applications
+
+classifications:
+  PUBLIC:
+    description: "Marketing material, public documentation, open source components."
+    allow_external_llm: true
+    require_pseudonymization: false
+    require_encryption: false
+    allowed_routes: ["omniroute", "headroom", "direct"]
+
+  INTERNAL:
+    description: "Internal architecture docs, team tickets, non-PII source code."
+    allow_external_llm: true
+    require_pseudonymization: true
+    require_encryption: false
+    allowed_routes: ["omniroute", "headroom"]
+
+  CONFIDENTIAL:
+    description: "Customer business data, CRM interactions, financial references, billing info."
+    allow_external_llm: true
+    require_pseudonymization: true
+    require_encryption: true
+    allowed_routes: ["headroom"]
+    fail_closed_on_secrets: true
+
+  RESTRICTED:
+    description: "Health/clinical data (saludOS), biometric/age tokens (AgeVerify), auth credentials, security incident logs (SIAM)."
+    allow_external_llm: false
+    require_pseudonymization: true
+    require_encryption: true
+    allowed_routes: ["local_only"]
+    fail_closed_on_secrets: true
+    audit_level: "VERBOSE"

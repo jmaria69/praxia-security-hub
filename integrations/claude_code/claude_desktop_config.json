@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "praxia-security": {
+      "command": "/home/jmari/proyectosIA/praxia-security-hub/scripts/praxia-mcp",
+      "args": []
+    }
+  }
+}

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Praxia Security Hub — MCP Server Runner for AI Agents
+# Connects Claude Code, Codex, Cursor, Gemini CLI via stdio JSON-RPC
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+VENV_PYTHON="$ROOT_DIR/.venv/bin/python3"
+
+if [ ! -f "$VENV_PYTHON" ]; then
+    echo "Virtual environment python not found at $VENV_PYTHON" >&2
+    exit 1
+fi
+
+export PYTHONPATH="$ROOT_DIR:$PYTHONPATH"
+exec "$VENV_PYTHON" -m backend.mcp.server

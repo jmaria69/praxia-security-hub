@@ -1,0 +1,25 @@
+id: "adminapp"
+name: "AdminApp (Onzane)"
+description: "Plataforma administrativa y gestión de finanzas de Praxia Labs"
+root_path: "/home/jmari/proyectosIA/AdminApp"
+technology:
+  frontend: "Next.js / React"
+  backend: "Flask / Python"
+  build_output: "dist"
+protection:
+  enabled: true
+  engine: "bla"
+  intensity: "balanced"
+  preserve_originals: true
+  verify_invariants: true
+  auto_rollback_on_failure: true
+privacy:
+  enabled: true
+  classification_default: "CONFIDENTIAL"
+  fail_closed: true
+  token_vault:
+    enabled: true
+    session_scoped: true
+allowed_providers:
+  - "anthropic"
+  - "openai"

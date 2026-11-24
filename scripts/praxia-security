@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Praxia Security Hub CLI wrapper
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PYTHONPATH="$DIR" "$DIR/.venv/bin/python" -m backend.cli "$@"

@@ -1,0 +1,23 @@
+id: "saludos"
+name: "saludOS"
+description: "Plataforma de gestión de historias clínicas y telemedicina"
+root_path: "/home/jmari/proyectosIA/saludOS"
+technology:
+  frontend: "Next.js / React"
+  build_output: ".next"
+protection:
+  enabled: true
+  engine: "bla"
+  intensity: "bankrupt"
+  preserve_originals: true
+  verify_invariants: true
+  auto_rollback_on_failure: true
+privacy:
+  enabled: true
+  classification_default: "RESTRICTED"
+  fail_closed: true
+  token_vault:
+    enabled: true
+    session_scoped: true
+allowed_providers:
+  - "anthropic"

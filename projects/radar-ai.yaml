@@ -1,0 +1,25 @@
+id: "radar-ai"
+name: "Praxia Radar AI"
+description: "Monitor de inteligencia de mercado y catalogación automatizada"
+root_path: "/home/jmari/proyectosIA/praxia-radar-ai"
+technology:
+  frontend: "Next.js / TypeScript"
+  build_output: ".next"
+protection:
+  enabled: true
+  engine: "bla"
+  intensity: "balanced"
+  preserve_originals: true
+  verify_invariants: true
+  auto_rollback_on_failure: true
+privacy:
+  enabled: true
+  classification_default: "INTERNAL"
+  fail_closed: true
+  token_vault:
+    enabled: true
+    session_scoped: true
+allowed_providers:
+  - "anthropic"
+  - "openai"
+  - "gemini"

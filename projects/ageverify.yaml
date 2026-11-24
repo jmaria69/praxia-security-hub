@@ -1,0 +1,23 @@
+id: "ageverify"
+name: "Praxia AgeVerify"
+description: "Servicio de verificación de edad y biometría segura"
+root_path: "/home/jmari/proyectosIA/AgeVerify"
+technology:
+  backend: "FastAPI / Python"
+  build_output: "dist"
+protection:
+  enabled: true
+  engine: "bla"
+  intensity: "bankrupt"
+  preserve_originals: true
+  verify_invariants: true
+  auto_rollback_on_failure: true
+privacy:
+  enabled: true
+  classification_default: "RESTRICTED"
+  fail_closed: true
+  token_vault:
+    enabled: true
+    session_scoped: true
+allowed_providers:
+  - "anthropic"

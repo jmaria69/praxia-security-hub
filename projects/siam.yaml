@@ -1,0 +1,24 @@
+id: "siam"
+name: "SIAM / SIEM"
+description: "Security Information & Event Management platform de Praxia Labs"
+root_path: "/home/jmari/proyectosIA/SIAM"
+technology:
+  backend: "FastAPI / Starlette / Python"
+  build_output: "build"
+protection:
+  enabled: true
+  engine: "bla"
+  intensity: "maximum"
+  preserve_originals: true
+  verify_invariants: true
+  auto_rollback_on_failure: true
+privacy:
+  enabled: true
+  classification_default: "RESTRICTED"
+  fail_closed: true
+  token_vault:
+    enabled: true
+    session_scoped: true
+allowed_providers:
+  - "anthropic"
+  - "openai"

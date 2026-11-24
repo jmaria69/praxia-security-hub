@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  praxia-backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: praxia-security-hub
+    network_mode: "host"
+    environment:
+      - PRAXIA_ENV=production
+      - PRAXIA_HOST=127.0.0.1
+      - PRAXIA_PORT=8888
+      - HEADROOM_URL=http://127.0.0.1:8787
+      - OMNIROUTE_URL=http://127.0.0.1:20128
+    volumes:
+      - ./data:/app/data
+      - ./projects:/app/projects
+    restart: unless-stopped

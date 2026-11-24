@@ -1,0 +1,52 @@
+# Default Project Security & Privacy Policy
+version: "1.0"
+protection:
+  enabled: true
+  engine: "bla"
+  intensity: "balanced"
+  preserve_originals: true
+  verify_invariants: true
+  auto_rollback_on_failure: true
+  exclude_patterns:
+    - "*.test.js"
+    - "*.spec.ts"
+    - "node_modules/**"
+    - ".git/**"
+
+privacy:
+  enabled: true
+  classification_default: "INTERNAL"
+  fail_closed: true
+  pii_detection:
+    enabled: true
+    threshold: 0.70
+    entities:
+      - "PERSON"
+      - "EMAIL_ADDRESS"
+      - "PHONE_NUMBER"
+      - "ES_NIF"
+      - "ES_NIE"
+      - "IBAN_CODE"
+      - "CREDIT_CARD"
+      - "LOCATION"
+      - "MEDICAL_DATA"
+  secret_detection:
+    enabled: true
+    block_on_detection: true
+    min_entropy: 3.8
+    detect_api_keys: true
+    detect_private_keys: true
+    detect_passwords: true
+  token_vault:
+    enabled: true
+    algorithm: "AES-256-GCM"
+    session_scoped: true
+    ttl_seconds: 86400
+    allow_depseudonymize: true
+
+allowed_providers:
+  - "anthropic"
+  - "openai"
+  - "gemini"
+  - "deepseek"
+  - "nvidia"

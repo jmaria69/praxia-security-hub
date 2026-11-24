@@ -1,0 +1,24 @@
+id: "crm-it"
+name: "CRM IT"
+description: "Sistema de gestión de relaciones y soporte técnico TI"
+root_path: "/home/jmari/proyectosIA/CRM IT"
+technology:
+  frontend: "Vite / React"
+  build_output: "dist"
+protection:
+  enabled: true
+  engine: "bla"
+  intensity: "balanced"
+  preserve_originals: true
+  verify_invariants: true
+  auto_rollback_on_failure: true
+privacy:
+  enabled: true
+  classification_default: "CONFIDENTIAL"
+  fail_closed: true
+  token_vault:
+    enabled: true
+    session_scoped: true
+allowed_providers:
+  - "anthropic"
+  - "openai"

@@ -1,6 +1,7 @@
 """Configuration settings for Praxia Security Hub."""
 import os
 from pathlib import Path
+from typing import Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
@@ -22,6 +23,11 @@ class Settings(BaseSettings):
     OMNIROUTE_URL: str = Field(default="http://127.0.0.1:20128", description="OmniRoute router URL")
     GATEWAY_FAIL_CLOSED: bool = Field(default=True, description="Fail-closed when restricted data or secrets leaked")
     GATEWAY_MAX_PAYLOAD_MB: int = Field(default=10)
+
+    # SIAM SOC / SIEM Integration
+    SIAM_URL: str = Field(default="http://127.0.0.1:8001", description="SIAM SOC/SIEM API URL")
+    SIAM_API_KEY: Optional[str] = Field(default=None, description="API key to authenticate alerts to SIAM")
+    SIAM_ALERTS_ENABLED: bool = Field(default=True, description="Forward security alerts to SIAM")
 
     # BLA Software Protection Adapter
     BLA_CLI_BIN: str = Field(default="bla", description="BLA executable name or path")

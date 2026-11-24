@@ -1,7 +1,7 @@
 """Model Context Protocol (MCP) Server for Praxia Security Hub.
 
 Enables AI development agents (Claude Code, Cursor, Codex, Gemini CLI, OpenCode)
-to interact with Praxia Security Hub directly via stdio JSON-RPC.
+and SIAM AI SOC Analysts to interact with Praxia Security Hub directly via stdio JSON-RPC.
 """
 import json
 import sys
@@ -13,6 +13,7 @@ from backend.core.project_registry import project_registry
 from backend.privacy.gateway.processor import privacy_processor
 from backend.protection.bla_adapter.cli_runner import bla_runner
 from backend.audit.logger import audit_logger
+from backend.providers.siam_alert_sink import siam_alert_sink
 
 TOOLS = [
     {
@@ -95,6 +96,69 @@ TOOLS = [
                 }
             }
         }
+    },
+    {
+        "name": "praxia_detect_code_leak",
+        "description": "Forensic code scanner: Analyzes code snippets or prompts to detect unauthorized copying, exfiltration of Praxia SaaS source code, and exposed secrets.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "code_or_prompt": {
+                    "type": "string",
+                    "description": "Code snippet or prompt text to analyze"
+                },
+                "suspected_project": {
+                    "type": "string",
+                    "description": "Suspected project ID (optional)"
+                }
+            },
+            "required": ["code_or_prompt"]
+        }
+    },
+    {
+        "name": "praxia_check_reverse_engineering",
+        "description": "Counter-REA verification: Inspects if a target SaaS application has active BLA adversarial defenses against automated LLM decompilers and reverse engineering.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_id": {
+                    "type": "string",
+                    "description": "Registered project ID (e.g. 'adminapp', 'saludos', 'siam')"
+                }
+            },
+            "required": ["project_id"]
+        }
+    },
+    {
+        "name": "praxia_forward_alert_to_siam",
+        "description": "Dispatch a security incident or reverse engineering alert directly to SIAM SOC.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "event_type": {
+                    "type": "string",
+                    "description": "Event type (e.g. 'software.reverse_engineering_attempt', 'privacy.code_exfiltration')"
+                },
+                "asset_name": {
+                    "type": "string",
+                    "description": "Affected asset or project name"
+                },
+                "severity": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high", "critical"],
+                    "description": "Severity level"
+                },
+                "summary": {
+                    "type": "string",
+                    "description": "Short incident summary"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Detailed forensic description"
+                }
+            },
+            "required": ["event_type", "asset_name", "severity", "summary", "description"]
+        }
     }
 ]
 
@@ -134,7 +198,6 @@ def handle_praxia_inspect_project(project_id: str) -> Dict[str, Any]:
 def handle_praxia_scan_prompt(text: str, project_id: str = "default") -> Dict[str, Any]:
     p = project_registry.get_project(project_id)
     policy = p.privacy.model_dump() if p else {}
-    
     try:
         res = privacy_processor.process_prompt(
             text=text,
@@ -143,6 +206,7 @@ def handle_praxia_scan_prompt(text: str, project_id: str = "default") -> Dict[st
             project_policy=policy
         )
         return {
+            "blocked": False,
             "classification": res.classification.level.value,
             "pii_entities_count": res.pii_entities_count,
             "secrets_count": res.secrets_count,
@@ -173,6 +237,76 @@ def handle_praxia_get_audit_events(project_id: Optional[str] = None, limit: int 
         "incidents": incidents
     }
 
+def handle_praxia_detect_code_leak(code_or_prompt: str, suspected_project: Optional[str] = None) -> Dict[str, Any]:
+    target_pid = suspected_project or "default"
+    proj = project_registry.get_project(target_pid)
+    policy = proj.privacy.model_dump() if proj else {}
+
+    # Perform thorough privacy and secret analysis
+    res = handle_praxia_scan_prompt(code_or_prompt, target_pid)
+    
+    # Check for proprietary signatures
+    is_proprietary_match = False
+    signatures_found = []
+    for p in project_registry.list_projects():
+        if p.name.lower() in code_or_prompt.lower() or p.id in code_or_prompt.lower():
+            is_proprietary_match = True
+            signatures_found.append(p.name)
+
+    return {
+        "suspected_project": target_pid,
+        "contains_secrets": res.get("secrets_count", 0) > 0 or res.get("blocked", False),
+        "blocked_by_fail_closed": res.get("blocked", False),
+        "proprietary_signatures_detected": signatures_found,
+        "pii_entities_detected": res.get("pii_entities_count", 0),
+        "exfiltration_risk": "CRITICAL" if res.get("blocked") else ("HIGH" if is_proprietary_match else "LOW"),
+        "scan_summary": res
+    }
+
+def handle_praxia_check_reverse_engineering(project_id: str) -> Dict[str, Any]:
+    p = project_registry.get_project(project_id)
+    if not p:
+        return {"error": f"Project '{project_id}' not found"}
+    
+    target = Path(p.root_path) / (p.technology.build_output or "dist")
+    if not target.exists():
+        return {
+            "project_id": p.id,
+            "status": "NO_BUILD_ARTIFACT",
+            "message": f"Target build output not found at {target}. Run project build first."
+        }
+    
+    audit_report = bla_runner.audit(target)
+    exposure_score = audit_report.get("exposureScore", 0)
+    
+    return {
+        "project_id": p.id,
+        "project_name": p.name,
+        "target_path": str(target),
+        "format": audit_report.get("detectedFormat"),
+        "rea_exposure_score": exposure_score,
+        "vulnerability_to_ai_decompiler": "HIGH" if exposure_score > 70 else ("MEDIUM" if exposure_score > 40 else "PROTECTED"),
+        "bla_hardening_configured": p.protection.enabled,
+        "configured_intensity": p.protection.intensity,
+        "audit_headline": audit_report.get("headlineWarning"),
+        "recommended_action": "Apply BLA adversarial shield with 'praxia-security protection harden'" if exposure_score > 40 else "Artifact is properly hardened."
+    }
+
+def handle_praxia_forward_alert_to_siam(
+    event_type: str,
+    asset_name: str,
+    severity: str,
+    summary: str,
+    description: str
+) -> Dict[str, Any]:
+    return siam_alert_sink.send_alert(
+        event_type=event_type,
+        asset_name=asset_name,
+        severity=severity,
+        summary=summary,
+        description=description
+    )
+
 def call_tool(name: str, arguments: Dict[str, Any]) -> Any:
     if name == "praxia_status":
         return handle_praxia_status()
@@ -186,6 +320,18 @@ def call_tool(name: str, arguments: Dict[str, Any]) -> Any:
         return handle_praxia_audit_artifacts(arguments.get("project_id", ""))
     elif name == "praxia_get_audit_events":
         return handle_praxia_get_audit_events(arguments.get("project_id"), arguments.get("limit", 20))
+    elif name == "praxia_detect_code_leak":
+        return handle_praxia_detect_code_leak(arguments.get("code_or_prompt", ""), arguments.get("suspected_project"))
+    elif name == "praxia_check_reverse_engineering":
+        return handle_praxia_check_reverse_engineering(arguments.get("project_id", ""))
+    elif name == "praxia_forward_alert_to_siam":
+        return handle_praxia_forward_alert_to_siam(
+            event_type=arguments.get("event_type", ""),
+            asset_name=arguments.get("asset_name", ""),
+            severity=arguments.get("severity", "medium"),
+            summary=arguments.get("summary", ""),
+            description=arguments.get("description", "")
+        )
     else:
         raise ValueError(f"Unknown tool: {name}")
 
@@ -215,7 +361,7 @@ def main():
                     },
                     "serverInfo": {
                         "name": "praxia-security-hub",
-                        "version": "1.0.0"
+                        "version": "1.1.0"
                     }
                 }
             }
@@ -223,7 +369,6 @@ def main():
             sys.stdout.flush()
 
         elif method == "notifications/initialized":
-            # Client acknowledge
             pass
 
         elif method == "tools/list":
@@ -273,7 +418,6 @@ def main():
             sys.stdout.flush()
 
         elif req_id is not None:
-            # Fallback for unrecognized method
             res = {
                 "jsonrpc": "2.0",
                 "id": req_id,

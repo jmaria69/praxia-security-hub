@@ -56,6 +56,18 @@ class PrivacyGatewayProcessor:
                     "categories": [s.category for s in secret_findings]
                 }
             )
+            # Dispatch real-time incident alert to SIAM SOC
+            try:
+                from backend.providers.siam_alert_sink import siam_alert_sink
+                siam_alert_sink.report_code_leak_attempt(
+                    project_id=project_id,
+                    secrets_count=len(secret_findings),
+                    categories=[s.category for s in secret_findings],
+                    rule_ids=[s.rule_id for s in secret_findings]
+                )
+            except Exception:
+                pass
+
             if fail_closed_enabled:
                 raise FailClosedException(
                     "Security Gateway Policy: Secrets or credentials detected in prompt. Request blocked by FAIL-CLOSED policy.",

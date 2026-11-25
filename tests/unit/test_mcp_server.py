@@ -45,3 +45,24 @@ def test_mcp_tool_praxia_get_audit_events():
     result = call_tool("praxia_get_audit_events", {"limit": 5})
     assert "events" in result
     assert "incidents" in result
+
+def test_mcp_tool_praxia_onboard_project(tmp_path):
+    project_dir = tmp_path / "mcp-saas-project"
+    project_dir.mkdir()
+    (project_dir / "package.json").write_text(json.dumps({
+        "name": "mcp-saas-project",
+        "dependencies": {"next": "14.2.0"}
+    }), encoding="utf-8")
+
+    result = call_tool("praxia_onboard_project", {
+        "project_path": str(project_dir),
+        "name": "mcp-saas-project",
+        "domain": "mcp-saas.praxialabs.com",
+        "dry_run": True
+    })
+
+    assert result["success"] is True
+    assert result["project_id"] == "mcp-saas-project"
+    assert result["domain"] == "mcp-saas.praxialabs.com"
+    assert result["bla_hardening"]["hook_created"] is True
+    assert (project_dir / "scripts" / "praxia-harden.js").exists()

@@ -66,3 +66,29 @@ def test_cli_protection_dry_run(capsys, monkeypatch, tmp_path):
     data = json.loads(captured.out)
     assert data["mode"] == "DRY_RUN"
     assert data["project_id"] == "adminapp"
+
+def test_cli_projects_onboard_dry_run(capsys, monkeypatch, tmp_path):
+    project_dir = tmp_path / "test-saas-project"
+    project_dir.mkdir()
+    (project_dir / "package.json").write_text(json.dumps({
+        "name": "test-saas-project",
+        "version": "1.0.0",
+        "dependencies": {"next": "15.0.0"}
+    }), encoding="utf-8")
+
+    monkeypatch.setattr("sys.argv", [
+        "praxia-security", "--json", "projects", "onboard", str(project_dir),
+        "--name", "test-saas-project",
+        "--domain", "test-saas.praxialabs.com",
+        "--dry-run"
+    ])
+    main()
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+    assert data["success"] is True
+    assert data["project_id"] == "test-saas-project"
+    assert data["domain"] == "test-saas.praxialabs.com"
+    assert data["bla_hardening"]["hook_created"] is True
+    assert data["bla_hardening"]["postbuild_configured"] is True
+    assert (project_dir / "scripts" / "praxia-harden.js").exists()
+    assert (project_dir / ".vercelignore").exists()

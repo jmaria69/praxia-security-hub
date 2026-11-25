@@ -159,6 +159,48 @@ TOOLS = [
             },
             "required": ["event_type", "asset_name", "severity", "summary", "description"]
         }
+    },
+    {
+        "name": "praxia_onboard_project",
+        "description": "Automated project onboarding pipeline: injects Blind LLM Agent (BLA) counter-REA hardening, initializes Git/GitHub, configures DNS subdomain on praxialabs.com, deploys to Vercel production, and registers with Praxia Security Hub.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {
+                    "type": "string",
+                    "description": "Absolute or relative path to the project root directory"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Project name / ID (e.g. 'my-app')"
+                },
+                "domain": {
+                    "type": "string",
+                    "description": "Custom domain or subdomain (e.g. 'my-app.praxialabs.com')"
+                },
+                "repo_name": {
+                    "type": "string",
+                    "description": "GitHub repository name"
+                },
+                "is_private": {
+                    "type": "boolean",
+                    "description": "Whether GitHub repository should be private (default false)",
+                    "default": False
+                },
+                "intensity": {
+                    "type": "string",
+                    "enum": ["fast", "balanced", "maximum", "paranoid"],
+                    "description": "BLA protection intensity (default balanced)",
+                    "default": "balanced"
+                },
+                "dry_run": {
+                    "type": "boolean",
+                    "description": "Simulate onboarding without modifying remote GitHub/Vercel (default false)",
+                    "default": False
+                }
+            },
+            "required": ["project_path"]
+        }
     }
 ]
 
@@ -307,6 +349,26 @@ def handle_praxia_forward_alert_to_siam(
         description=description
     )
 
+def handle_praxia_onboard_project(
+    project_path: str,
+    name: Optional[str] = None,
+    domain: Optional[str] = None,
+    repo_name: Optional[str] = None,
+    is_private: bool = False,
+    intensity: str = "balanced",
+    dry_run: bool = False
+) -> Dict[str, Any]:
+    from backend.orchestration.onboarder import project_onboarder
+    return project_onboarder.onboard(
+        project_path=project_path,
+        name=name,
+        domain=domain,
+        repo_name=repo_name,
+        is_private=is_private,
+        intensity=intensity,
+        dry_run=dry_run
+    )
+
 def call_tool(name: str, arguments: Dict[str, Any]) -> Any:
     if name == "praxia_status":
         return handle_praxia_status()
@@ -331,6 +393,16 @@ def call_tool(name: str, arguments: Dict[str, Any]) -> Any:
             severity=arguments.get("severity", "medium"),
             summary=arguments.get("summary", ""),
             description=arguments.get("description", "")
+        )
+    elif name == "praxia_onboard_project":
+        return handle_praxia_onboard_project(
+            project_path=arguments.get("project_path", "."),
+            name=arguments.get("name"),
+            domain=arguments.get("domain"),
+            repo_name=arguments.get("repo_name"),
+            is_private=arguments.get("is_private", False),
+            intensity=arguments.get("intensity", "balanced"),
+            dry_run=arguments.get("dry_run", False)
         )
     else:
         raise ValueError(f"Unknown tool: {name}")

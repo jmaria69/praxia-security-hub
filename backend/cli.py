@@ -8,6 +8,7 @@ from backend.protection.bla_adapter.cli_runner import bla_runner
 from backend.protection.artifact_manager.store import artifact_manager
 from backend.privacy.gateway.processor import privacy_processor
 from backend.audit.logger import audit_logger
+from backend.orchestration.onboarder import project_onboarder
 
 def cmd_status(args):
     projects = project_registry.list_projects()
@@ -61,6 +62,49 @@ def cmd_projects_inspect(args):
     print(f"Build Output:   {p.technology.build_output}")
     print(f"Protection BLA: {p.protection.intensity} (enabled={p.protection.enabled})")
     print(f"Privacy Default:{p.privacy.classification_default} (fail_closed={p.privacy.fail_closed})")
+
+def cmd_projects_onboard(args):
+    target_path = Path(args.path).resolve()
+    if not target_path.exists():
+        print(f"Error: Target path '{args.path}' does not exist.", file=sys.stderr)
+        sys.exit(1)
+        
+    if not args.json:
+        print("═══════════════════════════════════════════════════════════")
+        print(" 🚀 PRAXIA PROJECT ONBOARDING PIPELINE")
+        print("═══════════════════════════════════════════════════════════")
+        print(f" • Target Path:     {target_path}")
+        print(f" • Project Name:    {args.name or target_path.name}")
+        print(f" • Target Domain:   {args.domain or f'{args.name or target_path.name}.praxialabs.com'}")
+        print(f" • BLA Intensity:   {args.intensity}")
+        print(f" • Mode:            {'DRY-RUN (Simulated)' if args.dry_run else 'LIVE EXECUTION'}")
+        print("───────────────────────────────────────────────────────────")
+    
+    result = project_onboarder.onboard(
+        project_path=target_path,
+        name=args.name,
+        domain=args.domain,
+        repo_name=args.repo,
+        is_private=args.private,
+        intensity=args.intensity,
+        skip_git=args.skip_git,
+        skip_deploy=args.skip_deploy,
+        dry_run=args.dry_run
+    )
+    
+    if args.json:
+        print(json.dumps(result, indent=2))
+        return
+        
+    print(f" • BLA Hardening:   {'✓ Injected & Configured' if result['bla_hardening']['hook_created'] else '⚠️ Skipped/Failed'}")
+    print(f" • Postbuild Hook:  {'✓ Added to package.json' if result['bla_hardening']['postbuild_configured'] else '⚠️ Already present or skipped'}")
+    if not args.skip_git:
+        print(f" • GitHub Sync:     {'✓ ' + str(result['github_repo']) if result.get('github_repo') else '⚠️ Pushed to remote'}")
+    if not args.skip_deploy:
+        print(f" • DNS & Vercel:    {'✓ Live at ' + str(result['url']) if result.get('vercel_dns', {}).get('deployed_prod') or args.dry_run else '⚠️ Deployment pending'}")
+    print(f" • Praxia Registry: {'✓ Registered & Monitored' if result['praxia_registered'] or args.dry_run else '⚠️ Registry update skipped'}")
+    print("═══════════════════════════════════════════════════════════")
+    print(f"🎉 Onboarding complete: {result['url']}")
 
 def cmd_audit(args):
     project_id = args.project_id
@@ -336,6 +380,17 @@ def main():
     p_proj_ins = proj_sub.add_parser("inspect", help="Inspect a project")
     p_proj_ins.add_argument("project_id", help="Project identifier")
     p_proj_ins.set_defaults(func=cmd_projects_inspect)
+    p_proj_onb = proj_sub.add_parser("onboard", help="Onboard project: apply BLA hardening, GitHub, DNS & Vercel deployment")
+    p_proj_onb.add_argument("path", nargs="?", default=".", help="Path to project directory (default: current dir)")
+    p_proj_onb.add_argument("--name", help="Project identifier/name (defaults to folder name)")
+    p_proj_onb.add_argument("--domain", help="Target domain (defaults to <name>.praxialabs.com)")
+    p_proj_onb.add_argument("--repo", help="GitHub repo name (defaults to project name)")
+    p_proj_onb.add_argument("--private", action="store_true", help="Create private GitHub repository")
+    p_proj_onb.add_argument("--intensity", choices=["fast", "balanced", "maximum", "paranoid"], default="balanced", help="BLA protection intensity")
+    p_proj_onb.add_argument("--dry-run", action="store_true", help="Simulate onboarding without touching GitHub or Vercel")
+    p_proj_onb.add_argument("--skip-git", action="store_true", help="Skip git commit & GitHub repo creation")
+    p_proj_onb.add_argument("--skip-deploy", action="store_true", help="Skip DNS and Vercel deployment")
+    p_proj_onb.set_defaults(func=cmd_projects_onboard)
 
     # audit
     p_aud = subparsers.add_parser("audit", help="Audit project events and security incidents")

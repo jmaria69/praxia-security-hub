@@ -93,8 +93,18 @@ class ProxyEngine:
         headers.pop("host", None)
         headers.pop("content-length", None)
 
-        upstream_target = f"{self.upstream_url.rstrip('/')}/{path.lstrip('/')}"
-        
+        model_name = body_json.get("model", "")
+        # Determinar si es modelo cloud o local
+        is_cloud_model = any(model_name.startswith(p) for p in ("openai/", "anthropic/", "claude", "gpt-4", "gpt-3.5"))
+
+        if not is_cloud_model:
+            # Enviar a Ollama local soberano
+            clean_model = model_name.replace("ollama/", "")
+            body_json["model"] = clean_model
+            upstream_target = f"http://127.0.0.1:11434/{path.lstrip('/')}"
+        else:
+            upstream_target = f"{self.upstream_url.rstrip('/')}/{path.lstrip('/')}"
+
         # 5. Execute HTTP forward with fallback
         client = httpx.AsyncClient(timeout=120.0)
         try:

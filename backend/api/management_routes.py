@@ -32,6 +32,37 @@ class RollbackRequest(BaseModel):
     destination_path: str
 
 # --- Projects Management ---
+class OnboardRequest(BaseModel):
+    project_path: str
+    name: Optional[str] = None
+    domain: Optional[str] = None
+    repo_name: Optional[str] = None
+    is_private: bool = False
+    intensity: str = "balanced"
+    skip_git: bool = False
+    skip_deploy: bool = False
+    dry_run: bool = False
+
+@router.post("/projects/onboard")
+async def onboard_project(req: OnboardRequest, user: User = Depends(get_current_user)):
+    """Automates end-to-end project onboarding: BLA Hardening, GitHub sync, DNS & Vercel deployment."""
+    try:
+        from backend.orchestration.onboarder import project_onboarder
+        res = project_onboarder.onboard(
+            project_path=req.project_path,
+            name=req.name,
+            domain=req.domain,
+            repo_name=req.repo_name,
+            is_private=req.is_private,
+            intensity=req.intensity,
+            skip_git=req.skip_git,
+            skip_deploy=req.skip_deploy,
+            dry_run=req.dry_run
+        )
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/projects", response_model=list[ProjectConfig])
 async def list_projects(user: User = Depends(get_current_user)):
     return project_registry.list_projects()

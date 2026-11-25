@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Layers, Folder, Shield, ArrowUpRight, Search, FileCode } from 'lucide-react';
+import { Layers, Folder, Shield, ArrowUpRight, Search, FileCode, Plus } from 'lucide-react';
 import { api, ProjectConfig } from '../services/api';
+import { OnboardModal } from '../components/OnboardModal';
 
 export const ProjectSecurity: React.FC = () => {
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [selectedProject, setSelectedProject] = useState<ProjectConfig | null>(null);
   const [auditReport, setAuditReport] = useState<any>(null);
   const [auditing, setAuditing] = useState(false);
+  const [isOnboardOpen, setIsOnboardOpen] = useState(false);
 
   useEffect(() => {
     api.getProjects().then(data => {
@@ -30,13 +32,20 @@ export const ProjectSecurity: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm flex justify-between items-center">
+      <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Project Security Registry</h2>
           <p className="text-sm text-slate-500 mt-1">
             Gestión individual de políticas de protección BLA y privacidad LLM para cada producto de Praxia Labs.
           </p>
         </div>
+        <button
+          onClick={() => setIsOnboardOpen(true)}
+          className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition"
+        >
+          <Plus className="w-4 h-4" />
+          <span>+ Añadir Proyecto (Onboard)</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -143,6 +152,17 @@ export const ProjectSecurity: React.FC = () => {
           </div>
         )}
       </div>
+
+      <OnboardModal
+        isOpen={isOnboardOpen}
+        onClose={() => setIsOnboardOpen(false)}
+        onSuccess={() => {
+          api.getProjects().then(data => {
+            setProjects(data);
+            if (data.length > 0) setSelectedProject(data[data.length - 1]);
+          });
+        }}
+      />
     </div>
   );
 };

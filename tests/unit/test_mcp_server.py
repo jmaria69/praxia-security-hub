@@ -15,11 +15,11 @@ def test_mcp_tools_definition_structure():
 def test_mcp_tool_praxia_status():
     result = call_tool("praxia_status", {})
     assert result["status"] == "OPERATIONAL"
-    assert result["projects_count"] == 6
+    assert result["projects_count"] >= 6
 
 def test_mcp_tool_praxia_list_projects():
     result = call_tool("praxia_list_projects", {})
-    assert len(result) == 6
+    assert len(result) >= 6
     project_ids = [p["id"] for p in result]
     assert "adminapp" in project_ids
     assert "siam" in project_ids

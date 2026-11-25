@@ -93,5 +93,25 @@ export const api = {
     const url = `${API_BASE}/audit/incidents?limit=${limit}${projectId ? `&project_id=${projectId}` : ''}`;
     const res = await fetch(url);
     return res.json();
+  },
+  async onboardProject(params: {
+    project_path: string;
+    name?: string;
+    domain?: string;
+    repo_name?: string;
+    is_private?: boolean;
+    intensity?: string;
+    dry_run?: boolean;
+  }) {
+    const res = await fetch(`${API_BASE}/projects/onboard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Error al procesar el onboarding');
+    }
+    return res.json();
   }
 };

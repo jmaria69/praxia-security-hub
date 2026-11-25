@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, AlertTriangle, Lock, EyeOff, CheckCircle2, Activity, Play } from 'lucide-react';
+import { Shield, AlertTriangle, Lock, EyeOff, CheckCircle2, Activity, Play, Plus } from 'lucide-react';
 import { api, ProjectConfig, SecurityIncident } from '../services/api';
+import { OnboardModal } from '../components/OnboardModal';
 
 export const Overview: React.FC = () => {
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
@@ -10,6 +11,7 @@ export const Overview: React.FC = () => {
   const [scanText, setScanText] = useState('Consulta médica para Juan Pérez con DNI 12345678Z sobre tratamiento de cardiología');
   const [scanResult, setScanResult] = useState<any>(null);
   const [scanning, setScanning] = useState(false);
+  const [isOnboardOpen, setIsOnboardOpen] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -59,6 +61,13 @@ export const Overview: React.FC = () => {
             <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
             Motor A (BLA) & Motor B (Privacy) Operativos
           </span>
+          <button
+            onClick={() => setIsOnboardOpen(true)}
+            className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm transition"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ Añadir Proyecto</span>
+          </button>
         </div>
       </div>
 
@@ -205,6 +214,14 @@ export const Overview: React.FC = () => {
           </table>
         </div>
       </div>
+
+      <OnboardModal
+        isOpen={isOnboardOpen}
+        onClose={() => setIsOnboardOpen(false)}
+        onSuccess={() => {
+          api.getProjects().then(setProjects);
+        }}
+      />
     </div>
   );
 };

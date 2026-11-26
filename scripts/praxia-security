@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
 # Praxia Security Hub CLI wrapper
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PYTHONPATH="$DIR" "$DIR/.venv/bin/python" -m backend.cli "$@"
+PYTHON="${DIR}/.venv/bin/python"
+if [ ! -f "$PYTHON" ]; then
+    PYTHON="python3"
+fi
+export PYTHONPATH="$DIR:${PYTHONPATH:-}"
+exec "$PYTHON" -m backend.cli "$@"

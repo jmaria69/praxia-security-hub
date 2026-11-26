@@ -3,8 +3,11 @@ import os
 import re
 from pathlib import Path
 from backend.core.errors import PathTraversalError, SecurityException
+from backend.core.config import BASE_DIR
 
 ALLOWED_BASE_DIRS = [
+    BASE_DIR.resolve(),
+    Path.cwd().resolve(),
     Path("/home/jmari/proyectosIA").resolve(),
     Path("/home/jmari/siam_worktrees").resolve(),
     Path("/tmp").resolve(),
